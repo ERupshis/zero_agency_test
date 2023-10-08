@@ -10,6 +10,7 @@ import (
 
 	"github.com/erupshis/zero_agency_test/db/models"
 	"github.com/erupshis/zero_agency_test/internal/config"
+	"github.com/erupshis/zero_agency_test/internal/helpers"
 	"github.com/erupshis/zero_agency_test/internal/logger"
 	"github.com/erupshis/zero_agency_test/internal/retryer"
 	"github.com/erupshis/zero_agency_test/internal/storage/manager"
@@ -119,7 +120,13 @@ func (p *postgresDB) EditNote(ctx context.Context, note *models.News) error {
 }
 
 func (p *postgresDB) GetNotes(ctx context.Context) ([]models.News, error) {
-	notes, err := p.reformDB.WithContext(ctx).SelectAllFrom(models.NewsTable, "")
+	tx, err := p.reformDB.BeginTx(ctx, nil)
+	if err != nil {
+		return nil, fmt.Errorf("create transaction: %w", err)
+	}
+	defer helpers.ExecuteWithLogError(tx.Rollback, p.log)
+
+	notes, err := tx.SelectAllFrom(models.NewsTable, "")
 	if err != nil {
 		return nil, fmt.Errorf("get notes from db: %w", err)
 	}
@@ -127,8 +134,23 @@ func (p *postgresDB) GetNotes(ctx context.Context) ([]models.News, error) {
 	res := make([]models.News, 0, len(notes))
 	for _, noteStruct := range notes {
 		note := *noteStruct.(*models.News)
+
+		categories, err := tx.SelectAllFrom(models.NewsCategoriesTable, "WHERE news_id = $1", note.ID)
+		if err != nil {
+			return nil, fmt.Errorf("create transaction: %w", err)
+		}
+
 		note.Categories = []int64{}
+		for _, category := range categories {
+			note.Categories = append(note.Categories, category.(*models.NewsCategories).CategoryID)
+		}
+
 		res = append(res, note)
+	}
+
+	err = tx.Commit()
+	if err != nil {
+		return nil, fmt.Errorf("commit transaction: %w", err)
 	}
 
 	return res, nil
