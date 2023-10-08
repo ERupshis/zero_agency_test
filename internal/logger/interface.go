@@ -1,7 +1,9 @@
 // Package loggerZap provides interface for loggerZap in project.
 package logger
 
-import "net/http"
+import (
+	"github.com/gofiber/fiber/v2"
+)
 
 // BaseLogger interface of used loggerZap.
 type BaseLogger interface {
@@ -15,5 +17,5 @@ type BaseLogger interface {
 	Printf(msg string, fields ...interface{})
 
 	// LogHandler handler for requests logging.
-	LogHandler(h http.Handler) http.Handler
+	LogHandler(c *fiber.Ctx) error
 }

@@ -2,9 +2,9 @@ package logger
 
 import (
 	"fmt"
-	"net/http"
 	"time"
 
+	"github.com/gofiber/fiber/v2"
 	"go.uber.org/zap"
 )
 
@@ -62,23 +62,24 @@ func (l *loggerZap) Sync() {
 }
 
 // LogHandler handler for requests logging.
-func (l *loggerZap) LogHandler(h http.Handler) http.Handler {
-	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		start := time.Now()
+func (l *loggerZap) LogHandler(c *fiber.Ctx) error {
+	start := time.Now()
 
-		loggingWriter := createResponseWriter(w)
-		h.ServeHTTP(loggingWriter, r)
-		duration := time.Since(start)
+	// Proceed with the request handling
+	err := c.Next()
 
-		l.zap.Info("new incoming HTTP request",
-			zap.String("uri", r.RequestURI),
-			zap.String("method", r.Method),
-			zap.Int("status", loggingWriter.getResponseData().status),
-			zap.String("content-type", loggingWriter.Header().Get("Content-Type")),
-			zap.String("content-encoding", loggingWriter.Header().Get("Content-Encoding")),
-			zap.String("HashSHA256", loggingWriter.Header().Get("HashSHA256")),
-			zap.Duration("duration", duration),
-			zap.Int("size", loggingWriter.getResponseData().size),
-		)
-	})
+	// Calculate the duration
+	duration := time.Since(start)
+
+	// Log the request details
+	l.zap.Info("new incoming HTTP request",
+		zap.String("uri", c.OriginalURL()),
+		zap.String("method", c.Method()),
+		zap.Int("status", c.Response().StatusCode()), // Capture the status code from the response
+		zap.String("content-type", c.GetRespHeader("Content-Type")),
+		zap.Duration("duration", duration),
+		zap.Int("size", len(c.Response().Body())),
+	)
+
+	return err
 }
