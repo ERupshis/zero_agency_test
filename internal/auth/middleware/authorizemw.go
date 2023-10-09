@@ -12,6 +12,8 @@ import (
 	"github.com/gofiber/fiber/v2"
 )
 
+type favContextKey string
+
 func AuthorizeUser(usersManager managers.BaseUsersManager, jwt jwtgenerator.JwtGenerator, userRoleRequirement int, log logger.BaseLogger) fiber.Handler {
 	return func(c *fiber.Ctx) error {
 		if c.Path() == "/login" || c.Path() == "/register" {
@@ -52,7 +54,7 @@ func AuthorizeUser(usersManager managers.BaseUsersManager, jwt jwtgenerator.JwtG
 			return nil
 		}
 
-		ctxWithValue := context.WithValue(c.Context(), userdata.UserID, fmt.Sprintf("%d", userID))
+		ctxWithValue := context.WithValue(c.Context(), favContextKey(userdata.UserID), fmt.Sprintf("%d", userID))
 		c.SetUserContext(ctxWithValue)
 		if err = c.Next(); err != nil {
 			log.Info("[AuthorizeUser] failed to handle request: %v", err)

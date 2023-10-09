@@ -7,7 +7,6 @@ import (
 	"errors"
 	"fmt"
 	"reflect"
-	"sync"
 
 	"github.com/erupshis/zero_agency_test/db/models"
 	"github.com/erupshis/zero_agency_test/internal/config"
@@ -45,7 +44,6 @@ type postgresDB struct {
 	reformDB *reform.DB
 
 	log logger.BaseLogger
-	mu  sync.RWMutex
 }
 
 // CreatePostgreDB creates manager implementation. Supports migrations and check connection to database.
