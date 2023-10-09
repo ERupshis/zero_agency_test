@@ -1,5 +1,5 @@
 # Test task for Zero Agency
-description:
+# description:
 Create a JSON REST server with two endpoints:
 
 POST /edit/:Id - Modify a news item by Id
@@ -76,7 +76,7 @@ Authorization:
   ```
   {
       "login":"new_user",
-      "password":"new_user"
+      "password":"new_pwd"
   }
   ```
 
