@@ -1,6 +1,6 @@
 # Test task for Zero Agency
 
-# description:
+# Description:
 
 Create a JSON REST server with two endpoints:
 
