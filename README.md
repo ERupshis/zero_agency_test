@@ -61,3 +61,33 @@ Docker:
 Postman collection is located in root repository:
 - [https://github.com/ERupshis/effective_mobile/blob/main/Effective%20Mobile%20test.postman_collection.json](https://github.com/ERupshis/zero_agency_test/blob/master/zero%20agency.postman_collection.json)
 
+Authorization:
+  - Generates JWT token and Sets it in 'Authorization' header. By default, user get simple 'user' role. Authorization (depends on role is not implemented).
+  - *Other request should contain Authorization header for correct work.
+  - "/login". request format:
+  ```
+  {
+      "login":"u1",
+      "password":"p1"
+  }
+  ```
+  
+  - "/register". request format:
+  ```
+  {
+      "login":"new_user",
+      "password":"new_user"
+  }
+  ```
+
+Validation:
+  - added validation on missing fields. If server gets incorrect value type - returns error.
+
+Pagination:
+  - /list?page=1&perPage=5, where:
+    - page - number of page
+    - perPage - count of notes in result.
+  - if page is out of notes range - returns 'no content'
+
+Logging:
+  - implemented on zap logger (https://github.com/uber-go/zap)
