@@ -9,8 +9,6 @@ import (
 	"github.com/gofiber/fiber/v2"
 )
 
-const packageName = "auth"
-
 type Controller struct {
 	usersStrg managers.BaseUsersManager
 	jwt       jwtgenerator.JwtGenerator
