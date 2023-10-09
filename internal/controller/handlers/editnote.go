@@ -57,7 +57,7 @@ func EditNode(storage storage.BaseStorage, log logger.BaseLogger) fiber.Handler 
 				return nil
 			}
 
-			if errors.As(err, &errStrg.ErrIncorrectNewNote) {
+			if errors.Is(err, errStrg.ErrIncorrectNewNote) {
 				log.Info("[Controller:editNote] failed to create new note: %v", err)
 				c.Status(fiber.StatusBadRequest)
 				return nil
