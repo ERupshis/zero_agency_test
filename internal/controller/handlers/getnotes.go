@@ -4,10 +4,16 @@ import (
 	"encoding/json"
 	"strconv"
 
+	"github.com/erupshis/zero_agency_test/db/models"
 	"github.com/erupshis/zero_agency_test/internal/logger"
 	"github.com/erupshis/zero_agency_test/internal/storage"
 	"github.com/gofiber/fiber/v2"
 )
+
+type responseStruct struct {
+	Success bool          `json:"Success"`
+	News    []models.News `json:"News"`
+}
 
 func GetNotes(storage storage.BaseStorage, log logger.BaseLogger) fiber.Handler {
 	return func(c *fiber.Ctx) error {
@@ -37,7 +43,12 @@ func GetNotes(storage storage.BaseStorage, log logger.BaseLogger) fiber.Handler 
 			return nil
 		}
 
-		resp, err := json.Marshal(notes)
+		respStruct := responseStruct{
+			Success: true,
+			News:    notes,
+		}
+
+		resp, err := json.Marshal(respStruct)
 		if err != nil {
 			c.Status(fiber.StatusInternalServerError)
 			log.Info("[Controller:getNotes] failed to marshal response body: %v", err)
