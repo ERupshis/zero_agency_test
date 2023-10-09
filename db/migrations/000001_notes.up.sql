@@ -6,7 +6,7 @@ CREATE TABLE IF NOT EXISTS news (
 
 CREATE TABLE IF NOT EXISTS news_categories (
     id BIGSERIAL PRIMARY KEY NOT NULL,
-    news_id BIGINT NOT NULL,
+    news_id BIGINT REFERENCES news(id) NOT NULL,
     category_id BIGINT NOT NULL,
     CONSTRAINT unique_val UNIQUE (news_id, category_id)
 );

@@ -6,11 +6,12 @@ import (
 	"database/sql"
 	"errors"
 	"fmt"
+	"reflect"
 	"sync"
 
 	"github.com/erupshis/zero_agency_test/db/models"
 	"github.com/erupshis/zero_agency_test/internal/config"
-	"github.com/erupshis/zero_agency_test/internal/helpers"
+	"github.com/erupshis/zero_agency_test/internal/constants"
 	"github.com/erupshis/zero_agency_test/internal/logger"
 	"github.com/erupshis/zero_agency_test/internal/retryer"
 	"github.com/erupshis/zero_agency_test/internal/storage/manager"
@@ -36,7 +37,8 @@ var databaseErrorsToRetry = []error{
 }
 
 // postgresDB storageManager implementation for PostgreSQL. Consist of database and QueriesHandler.
-// Request to database are synchronized by sync.RWMutex. All requests is done on united transaction. Multi insert/update/delete is not supported at the moment.
+// Request to database are synchronized by sync.RWMutex. All requests is done on united transaction.
+// Multi insert/update/delete is not supported at the moment.
 type postgresDB struct {
 	database *sql.DB
 	reformDB *reform.DB
@@ -103,19 +105,95 @@ func (p *postgresDB) CheckConnection(ctx context.Context) (bool, error) {
 func (p *postgresDB) Close() error {
 	return p.database.Close()
 }
-func (p *postgresDB) getNote(ctx context.Context, ID int64) (*models.News, error) {
-	note, err := p.reformDB.WithContext(ctx).FindByPrimaryKeyFrom(models.NewsTable, ID)
+
+// EditNote modifies existing note in database. Also can affect on news_categories table.
+// If note.ID = 0 - inserts new note in news table.
+// returns id of created/modified note.
+func (p *postgresDB) EditNote(ctx context.Context, note *models.News) error {
+	tx, err := p.reformDB.BeginTx(ctx, nil)
 	if err != nil {
-		return nil, fmt.Errorf("get note from db: %w", err)
+		return fmt.Errorf("create transaction: %w", err)
 	}
 
-	return note.(*models.News), nil
+	if note.ID == 0 {
+		// add new note.
+		if err = insertNewNote(tx, note); err != nil {
+			_ = tx.Rollback()
+			return err
+		}
+	} else {
+		// update if exists.
+		if err = updateExistingNote(tx, note); err != nil {
+			_ = tx.Rollback()
+			return err
+		}
+	}
+
+	if err = updateCategoriesIfNeed(tx, note); err != nil {
+		_ = tx.Rollback()
+		return err
+	}
+
+	if err = tx.Commit(); err != nil {
+		_ = tx.Rollback()
+		return fmt.Errorf("commit transaction: %w", err)
+	}
+
+	return nil
 }
 
-func (p *postgresDB) EditNote(ctx context.Context, note *models.News) error {
-	if err := p.reformDB.WithContext(ctx).Save(note); err != nil {
+func insertNewNote(tx *reform.TX, note *models.News) error {
+	if err := tx.Save(note); err != nil {
+		return fmt.Errorf("save new note: %w", err)
+	}
+
+	return nil
+}
+
+func updateExistingNote(tx *reform.TX, note *models.News) error {
+	noteRaw, err := tx.SelectOneFrom(models.NewsTable, "WHERE id = $1", note.ID)
+	if err != nil {
+		_ = tx.Rollback()
+		return fmt.Errorf("select existing note by id '%d': %w", note.ID, err)
+	}
+
+	noteExisting := noteRaw.(*models.News)
+	if note.Title != constants.MissingStringFlag {
+		noteExisting.Title = note.Title
+	}
+	if note.Content != constants.MissingStringFlag {
+		noteExisting.Content = note.Content
+	}
+	if !reflect.DeepEqual(note.Categories, constants.MissingInt64ArrayFlag) {
+		noteExisting.Categories = note.Categories
+	}
+
+	if err = tx.Save(noteExisting); err != nil {
 		return fmt.Errorf("save/update news: %w", err)
 	}
+
+	return nil
+}
+
+func updateCategoriesIfNeed(tx *reform.TX, note *models.News) error {
+	if !reflect.DeepEqual(note.Categories, constants.MissingInt64ArrayFlag) {
+		_, err := tx.DeleteFrom(models.NewsCategoriesTable, "WHERE news_id = $1", note.ID)
+		if err != nil {
+			return fmt.Errorf("remove existing categories for news_id '%d': %w", note.ID, err)
+		}
+
+		for _, category := range note.Categories {
+			categoryModel := &models.NewsCategories{
+				NewsID:     note.ID,
+				CategoryID: category,
+			}
+
+			if err = tx.Save(categoryModel); err != nil {
+				return fmt.Errorf("save/update news: %w", err)
+			}
+		}
+	}
+
 	return nil
 }
 
@@ -124,10 +202,10 @@ func (p *postgresDB) GetNotes(ctx context.Context) ([]models.News, error) {
 	if err != nil {
 		return nil, fmt.Errorf("create transaction: %w", err)
 	}
-	defer helpers.ExecuteWithLogError(tx.Rollback, p.log)
 
 	notes, err := tx.SelectAllFrom(models.NewsTable, "")
 	if err != nil {
+		_ = tx.Rollback()
 		return nil, fmt.Errorf("get notes from db: %w", err)
 	}
 
@@ -137,6 +215,7 @@ func (p *postgresDB) GetNotes(ctx context.Context) ([]models.News, error) {
 
 		categories, err := tx.SelectAllFrom(models.NewsCategoriesTable, "WHERE news_id = $1", note.ID)
 		if err != nil {
+			_ = tx.Rollback()
 			return nil, fmt.Errorf("create transaction: %w", err)
 		}
 
@@ -150,6 +229,7 @@ func (p *postgresDB) GetNotes(ctx context.Context) ([]models.News, error) {
 
 	err = tx.Commit()
 	if err != nil {
+		_ = tx.Rollback()
 		return nil, fmt.Errorf("commit transaction: %w", err)
 	}
 

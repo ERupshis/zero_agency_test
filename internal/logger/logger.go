@@ -33,7 +33,7 @@ func (l *loggerZap) Info(msg string, fields ...interface{}) {
 	l.zap.Info(fmt.Sprintf(msg, fields...))
 }
 
-// Printf interface for kafka's implementation.
+// Printf interface implementation.
 func (l *loggerZap) Printf(msg string, fields ...interface{}) {
 	l.Info(msg, fields...)
 }

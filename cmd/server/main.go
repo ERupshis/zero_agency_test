@@ -14,7 +14,10 @@ import (
 	"github.com/erupshis/zero_agency_test/internal/storage"
 	postgresql "github.com/erupshis/zero_agency_test/internal/storage/manager/postgres"
 	"github.com/gofiber/fiber/v2"
+	"github.com/joho/godotenv"
 )
+
+const envFile = ".env"
 
 func main() {
 	//log.
@@ -24,6 +27,9 @@ func main() {
 	}
 
 	//config.
+	if err = godotenv.Load(envFile); err != nil {
+		log.Info("Error loading %s file: %v", envFile, err)
+	}
 	cfg := config.Parse()
 
 	ctxWithCancel, cancel := context.WithCancel(context.Background())

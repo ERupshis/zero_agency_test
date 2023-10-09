@@ -21,3 +21,9 @@ func InterfaceToString(i interface{}) string {
 //func UnmarshalData(body []byte, dst interface{}) error {
 //	return json.Unmarshal(body, dst)
 //}
+
+func NormalizeInt64(val *int64) {
+	if *val <= 0 {
+		*val = 0
+	}
+}
