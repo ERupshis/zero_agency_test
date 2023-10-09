@@ -2,6 +2,7 @@ package handlers
 
 import (
 	"encoding/json"
+	"strconv"
 
 	"github.com/erupshis/zero_agency_test/internal/logger"
 	"github.com/erupshis/zero_agency_test/internal/storage"
@@ -10,7 +11,20 @@ import (
 
 func GetNotes(storage storage.BaseStorage, log logger.BaseLogger) fiber.Handler {
 	return func(c *fiber.Ctx) error {
-		notes, err := storage.GetNotes(c.Context())
+		page, err := strconv.ParseInt(c.Query("page", "1"), 10, 64)
+		if err != nil {
+			log.Info("[Controller:getNotes] invalid 'page' in query: %v", err)
+			c.Status(fiber.StatusBadGateway)
+			return nil
+		}
+		perPage, err := strconv.ParseInt(c.Query("perPage", "10"), 10, 64)
+		if err != nil {
+			log.Info("[Controller:getNotes] invalid 'perPage' in query: %v", err)
+			c.Status(fiber.StatusBadGateway)
+			return nil
+		}
+
+		notes, err := storage.GetNotes(c.Context(), page, perPage)
 		if err != nil {
 			log.Info("[Controller:getNotes] failed to get notes from storage: %v", err)
 			c.Status(fiber.StatusInternalServerError)

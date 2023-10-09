@@ -14,6 +14,7 @@ import (
 	"github.com/erupshis/zero_agency_test/internal/constants"
 	"github.com/erupshis/zero_agency_test/internal/logger"
 	"github.com/erupshis/zero_agency_test/internal/retryer"
+	errStrg "github.com/erupshis/zero_agency_test/internal/storage/errors"
 	"github.com/erupshis/zero_agency_test/internal/storage/manager"
 	"github.com/golang-migrate/migrate/v4"
 	"github.com/golang-migrate/migrate/v4/database/postgres"
@@ -143,6 +144,10 @@ func (p *postgresDB) EditNote(ctx context.Context, note *models.News) error {
 }
 
 func insertNewNote(tx *reform.TX, note *models.News) error {
+	if note.Title == constants.MissingStringFlag || note.Content == constants.MissingStringFlag {
+		return errStrg.ErrIncorrectNewNote
+	}
+
 	if err := tx.Save(note); err != nil {
 		return fmt.Errorf("save new note: %w", err)
 	}
@@ -153,7 +158,6 @@ func insertNewNote(tx *reform.TX, note *models.News) error {
 func updateExistingNote(tx *reform.TX, note *models.News) error {
 	noteRaw, err := tx.SelectOneFrom(models.NewsTable, "WHERE id = $1", note.ID)
 	if err != nil {
-		_ = tx.Rollback()
 		return fmt.Errorf("select existing note by id '%d': %w", note.ID, err)
 	}
 
@@ -197,13 +201,13 @@ func updateCategoriesIfNeed(tx *reform.TX, note *models.News) error {
 	return nil
 }
 
-func (p *postgresDB) GetNotes(ctx context.Context) ([]models.News, error) {
+func (p *postgresDB) GetNotes(ctx context.Context, page int64, perPage int64) ([]models.News, error) {
 	tx, err := p.reformDB.BeginTx(ctx, nil)
 	if err != nil {
 		return nil, fmt.Errorf("create transaction: %w", err)
 	}
 
-	notes, err := tx.SelectAllFrom(models.NewsTable, "")
+	notes, err := tx.SelectAllFrom(models.NewsTable, "LIMIT $1 OFFSET $2", perPage, (page-1)*perPage)
 	if err != nil {
 		_ = tx.Rollback()
 		return nil, fmt.Errorf("get notes from db: %w", err)

@@ -12,6 +12,7 @@ import (
 	"github.com/erupshis/zero_agency_test/internal/helpers"
 	"github.com/erupshis/zero_agency_test/internal/logger"
 	"github.com/erupshis/zero_agency_test/internal/storage"
+	errStrg "github.com/erupshis/zero_agency_test/internal/storage/errors"
 	"github.com/gofiber/fiber/v2"
 )
 
@@ -31,13 +32,12 @@ func EditNode(storage storage.BaseStorage, log logger.BaseLogger) fiber.Handler 
 			return nil
 		}
 
-		helpers.NormalizeInt64(&noteID)
 		note := &models.News{
-			ID:         noteID,
 			Title:      constants.MissingStringFlag,
 			Content:    constants.MissingStringFlag,
-			Categories: constants.MissingInt64ArrayFlag,
+			Categories: make([]int64, len(constants.MissingInt64ArrayFlag)),
 		}
+		copy(note.Categories, constants.MissingInt64ArrayFlag)
 
 		c.Body()
 		if err = json.Unmarshal(c.Body(), note); err != nil {
@@ -46,9 +46,19 @@ func EditNode(storage storage.BaseStorage, log logger.BaseLogger) fiber.Handler 
 			return nil
 		}
 
+		helpers.NormalizeInt64(&noteID)
+		note.ID = noteID
+		note.Categories = helpers.RemoveDuplicatesInt(note.Categories)
+
 		if err = storage.EditNote(c.Context(), note); err != nil {
 			if errors.Is(err, sql.ErrNoRows) {
 				log.Info("[Controller:editNote] couldn't find note with Id '%d': %v", note.ID, err)
+				c.Status(fiber.StatusBadRequest)
+				return nil
+			}
+
+			if errors.As(err, &errStrg.ErrIncorrectNewNote) {
+				log.Info("[Controller:editNote] failed to create new note: %v", err)
 				c.Status(fiber.StatusBadRequest)
 				return nil
 			}

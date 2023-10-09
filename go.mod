@@ -4,6 +4,8 @@ go 1.21
 
 require (
 	github.com/caarlos0/env v3.5.0+incompatible
+	github.com/gofiber/fiber/v2 v2.49.2
+	github.com/golang-jwt/jwt/v4 v4.4.2
 	github.com/jackc/pgerrcode v0.0.0-20220416144525-469b46aa5efa
 	github.com/stretchr/testify v1.8.4
 	go.uber.org/zap v1.26.0
@@ -21,7 +23,6 @@ require (
 	github.com/docker/go-connections v0.4.0 // indirect
 	github.com/docker/go-units v0.5.0 // indirect
 	github.com/go-sql-driver/mysql v1.5.0 // indirect
-	github.com/gofiber/fiber/v2 v2.49.2 // indirect
 	github.com/gogo/protobuf v1.3.2 // indirect
 	github.com/golang-migrate/migrate v3.5.4+incompatible // indirect
 	github.com/golang-migrate/migrate/v4 v4.16.2 // indirect

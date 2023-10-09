@@ -14,6 +14,7 @@ type Config struct {
 	DatabaseIdleConn int
 	DatabaseOpenConn int
 	Host             string
+	JWTKey           string
 }
 
 // Parse main func to parse variables.
@@ -30,6 +31,7 @@ const (
 	flagDatabaseDSN      = "d"
 	flagDatabaseIdleConn = "di"
 	flagDatabaseOpenConn = "do"
+	flagJWTKey           = "j"
 )
 
 // checkFlags checks flags of app's launch.
@@ -42,6 +44,9 @@ func checkFlags(config *Config) {
 	flag.IntVar(&config.DatabaseIdleConn, flagDatabaseIdleConn, 3, "database max idle connections")
 	flag.IntVar(&config.DatabaseOpenConn, flagDatabaseOpenConn, 3, "database max open connections")
 
+	//auth.
+	flag.StringVar(&config.JWTKey, flagJWTKey, "", "JWT web token key")
+
 	flag.Parse()
 }
 
@@ -52,6 +57,7 @@ type envConfig struct {
 	DatabaseIdleConn string `env:"DB_MAX_IDLE_CONN"`
 	DatabaseOpenConn string `env:"DB_MAX_OPEN_CONN"`
 	Host             string `env:"ADDRESS"`
+	JWTKey           string `env:"JWT_KEY"`
 }
 
 // checkEnvironments checks environments suitable for server.
@@ -69,4 +75,7 @@ func checkEnvironments(config *Config) {
 	_ = SetEnvToParamIfNeed(&config.DatabaseDSN, envs.DatabaseDSN)
 	_ = SetEnvToParamIfNeed(&config.DatabaseIdleConn, envs.DatabaseIdleConn)
 	_ = SetEnvToParamIfNeed(&config.DatabaseOpenConn, envs.DatabaseOpenConn)
+
+	//auth.
+	_ = SetEnvToParamIfNeed(&config.JWTKey, envs.JWTKey)
 }

@@ -7,6 +7,10 @@ import (
 	"os/signal"
 	"syscall"
 
+	"github.com/erupshis/zero_agency_test/internal/auth"
+	"github.com/erupshis/zero_agency_test/internal/auth/jwtgenerator"
+	ramUsers "github.com/erupshis/zero_agency_test/internal/auth/users/managers/ram"
+	"github.com/erupshis/zero_agency_test/internal/auth/users/userdata"
 	"github.com/erupshis/zero_agency_test/internal/config"
 	"github.com/erupshis/zero_agency_test/internal/controller"
 	"github.com/erupshis/zero_agency_test/internal/helpers"
@@ -35,6 +39,11 @@ func main() {
 	ctxWithCancel, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
+	//authentication.
+	usersStorage := ramUsers.Create(log)
+	jwtGenerator := jwtgenerator.Create(cfg.JWTKey, 2, log)
+	authController := auth.CreateAuthenticator(usersStorage, jwtGenerator, log)
+
 	//storage.
 	postgreManager, err := postgresql.CreatePostgreDB(ctxWithCancel, cfg, log)
 	if err != nil {
@@ -48,6 +57,8 @@ func main() {
 
 	server := fiber.New()
 	server.Use(log.LogHandler)
+	server.Use(authController.Authorize(userdata.RoleUser))
+	server.Mount("/", authController.Route())
 	server.Mount("/", mainController.Route())
 
 	go func(log logger.BaseLogger) {

@@ -29,8 +29,8 @@ func (s *storage) EditNote(ctx context.Context, note *models.News) error {
 	return nil
 }
 
-func (s *storage) GetNotes(ctx context.Context) ([]models.News, error) {
-	notes, err := s.mngr.GetNotes(ctx)
+func (s *storage) GetNotes(ctx context.Context, page int64, perPage int64) ([]models.News, error) {
+	notes, err := s.mngr.GetNotes(ctx, page, perPage)
 	if err != nil {
 		return nil, fmt.Errorf("storage: %w", err)
 	}
